@@ -1,4 +1,4 @@
 package com.example.exam.mappers;
 
-public class AdminMappers {
+public class RoleMapper {
 }
