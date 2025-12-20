@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.liquibase.org/xml/ns/dbchangelog
+           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <!-- Таблица users -->
+    <changeSet id="2025-12-21-01-create-users-table" author="grok">
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="password" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="full_name" type="VARCHAR(255)"/>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <!-- другие поля User, если есть -->
+        </createTable>
+    </changeSet>
+
+    <!-- Таблица для ролей (enum как строки) -->
+    <changeSet id="2025-12-21-02-create-user-roles-table" author="grok">
+        <createTable tableName="user_roles">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="user_roles" columnNames="user_id,role"/>
+        <addForeignKeyConstraint baseTableName="user_roles"
+                                 baseColumnNames="user_id"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_user_roles_user"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Таблица doctor_profiles -->
+    <changeSet id="2025-12-21-03-create-doctor-profiles-table" author="grok">
+        <createTable tableName="doctor_profiles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="full_name" type="VARCHAR(255)"/>
+            <column name="specialization" type="VARCHAR(255)"/>
+            <column name="experience" type="INT"/>
+            <column name="user_id" type="BIGINT">
+                <constraints unique="true" nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="doctor_profiles"
+                                 baseColumnNames="user_id"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_doctor_profile_user"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Таблица appointments -->
+    <changeSet id="2025-12-21-04-create-appointments-table" author="grok">
+        <createTable tableName="appointments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="appointment_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="SCHEDULED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="TEXT"/>
+            <!-- другие поля, если есть -->
+
+            <column name="patient_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="doctor_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="appointments"
+                                 baseColumnNames="patient_id"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_appointment_patient"
+                                 onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint baseTableName="appointments"
+                                 baseColumnNames="doctor_id"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_appointment_doctor"
+                                 onDelete="RESTRICT"/>
+    </changeSet>
+
+    <!-- Опционально: начальные данные (админ пользователь) -->
+    <changeSet id="2025-12-21-05-insert-admin-user" author="grok">
+        <insert tableName="users">
+            <column name="username" value="admin"/>
+            <column name="password" value="$2a$12$3exampleHashedPasswordHere..."/> <!-- BCrypt хэш от "password" -->
+            <column name="full_name" value="Administrator"/>
+            <column name="enabled" value="true"/>
+        </insert>
+
+        <insert tableName="user_roles">
+            <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'admin')"/>
+            <column name="role" value="ADMIN"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
