@@ -1,5 +1,11 @@
 package com.example.exam.entities;
 
-public enum Roles {
-    ADMIN, USER, DOCTOR
+import jakarta.persistence.*;
+import lombok.*;
+
+@Getter
+public enum Role {
+    ADMIN,
+    DOCTOR,
+    PATIENT
 }

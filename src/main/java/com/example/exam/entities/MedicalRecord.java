@@ -1,16 +1,22 @@
 package com.example.exam.entities;
 
+import jakarta.persistence.*;
 import lombok.*;
 
+@Entity
+@Table(name = "medical_record")
 @Data
-@Setter
 @Getter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class MedicalRecords {
-    Long id;
-    String medicalRecordName;
+@Setter
+public class MedicalRecord {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
+    private String medicalRecordName;
+
+    @ManyToOne
+    @JoinColumn(name = "appointment_id")
+    private Appointment appointment;
 }

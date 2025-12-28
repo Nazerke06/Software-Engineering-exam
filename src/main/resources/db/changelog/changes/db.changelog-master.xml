@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.liquibase.org/xml/ns/dbchangelog
+           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <!-- ========================= -->
+    <!-- 1️⃣ USERS -->
+    <!-- ========================= -->
+    <changeSet id="2025-12-21-01-create-users" author="nazerke06">
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="password" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="full_name" type="VARCHAR(255)"/>
+            <column name="email" type="VARCHAR(255)">
+                <constraints unique="true"/>
+            </column>
+            <column name="phone" type="VARCHAR(50)"/>
+            <column name="enabled" type="BOOLEAN"/>
+        </createTable>
+    </changeSet>
+
+    <!-- ========================= -->
+    <!-- 2️⃣ USER ROLES -->
+    <!-- ========================= -->
+    <changeSet id="2025-12-21-02-create-user-roles" author="nazerke06">
+        <createTable tableName="user_roles">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="user_roles"
+                       columnNames="user_id, role"/>
+
+        <addForeignKeyConstraint
+                baseTableName="user_roles"
+                baseColumnNames="user_id"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                constraintName="fk_user_roles_user"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- ========================= -->
+    <!-- 3️⃣ DOCTOR PROFILES -->
+    <!-- ========================= -->
+    <changeSet id="2025-12-21-03-create-doctor-profiles" author="nazerke06">
+        <createTable tableName="doctor_profiles">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="full_name" type="VARCHAR(255)"/>
+            <column name="specialization" type="VARCHAR(255)"/>
+            <column name="experience" type="INT"/>
+            <column name="user_id" type="BIGINT">
+                <constraints unique="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="doctor_profiles"
+                baseColumnNames="user_id"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                constraintName="fk_doctor_profiles_user"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- ========================= -->
+    <!-- 4️⃣ APPOINTMENTS -->
+    <!-- ========================= -->
+    <changeSet id="2025-12-21-04-create-appointments" author="nazerke06">
+        <createTable tableName="appointments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="appointment_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time" type="VARCHAR(50)"/>
+            <column name="description" type="TEXT"/>
+            <column name="location" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(50)"/>
+            <column name="reason" type="TEXT"/>
+            <column name="patient_id" type="BIGINT"/>
+            <column name="doctor_id" type="BIGINT"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="appointments"
+                baseColumnNames="patient_id"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                constraintName="fk_appointment_patient"/>
+
+        <addForeignKeyConstraint
+                baseTableName="appointments"
+                baseColumnNames="doctor_id"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                constraintName="fk_appointment_doctor"/>
+    </changeSet>
+
+    <!-- ========================= -->
+    <!-- 5️⃣ MEDICAL RECORD -->
+    <!-- ========================= -->
+    <changeSet id="2025-12-21-05-create-medical-record" author="nazerke06">
+        <createTable tableName="medical_record">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="medical_record_name" type="VARCHAR(255)"/>
+            <column name="appointment_id" type="BIGINT"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="medical_record"
+                baseColumnNames="appointment_id"
+                referencedTableName="appointments"
+                referencedColumnNames="id"
+                constraintName="fk_medical_record_appointment"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- ========================= -->
+    <!-- 6️⃣ INSERT ADMIN USER -->
+    <!-- ========================= -->
+    <changeSet id="2025-12-21-06-insert-admin-user" author="nazerke06">
+        <insert tableName="users">
+            <column name="id" valueNumeric="1"/>
+            <column name="username" value="admin"/>
+            <column name="password" value="$2a$12$3exampleHashedPasswordHere..."/>
+            <column name="full_name" value="Administrator"/>
+            <column name="enabled" value="true"/>
+        </insert>
+
+        <insert tableName="user_roles">
+            <column name="user_id" valueNumeric="1"/>
+            <column name="role" value="ADMIN"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
