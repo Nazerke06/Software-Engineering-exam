@@ -2,9 +2,8 @@ package com.example.exam.mappers;
 
 import com.example.exam.dto.appointmentdto.AppointmentRequestDTO;
 import com.example.exam.dto.appointmentdto.AppointmentResponseDTO;
-import com.example.exam.entities.Appointment;
-import com.example.exam.entities.User;
-import org.junit.jupiter.api.DisplayName;
+import com.example.exam.entities.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
@@ -12,114 +11,88 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AppointmentMapperTest {
+public class AppointmentMapperTest {
 
-    private final AppointmentMapper mapper = Mappers.getMapper(AppointmentMapper.class);
+    private AppointmentMapper mapper;
 
-    private User createDoctor(String fullName) {
-        User doctor = new User();
-        doctor.setId(10L);
-        doctor.setFullName(fullName);
-        return doctor;
+    @BeforeEach
+    void setup() {
+        mapper = Mappers.getMapper(AppointmentMapper.class);
     }
 
-    private User createPatient(String fullName) {
-        User patient = new User();
-        patient.setId(20L);
-        patient.setFullName(fullName);
-        return patient;
-    }
+    @Test
+    void testToDTO() {
+        // Setup doctor and patient users
+        User doctorUser = new User();
+        doctorUser.setFirstName("Sarah");
+        doctorUser.setLastName("Connor");
+        doctorUser.setRole(Role.DOCTOR);
 
-    private AppointmentRequestDTO createRequestDTO() {
-        return AppointmentRequestDTO.builder()
-                .appointmentDate(LocalDateTime.of(2025, 12, 30, 14, 30))
-                .doctorId(10L)
-                .reason("Annual check-up")
-                .build();
-    }
+        User patientUser = new User();
+        patientUser.setFirstName("John");
+        patientUser.setLastName("Doe");
+        patientUser.setRole(Role.PATIENT);
 
-    private Appointment createFullAppointment() {
+        // Setup doctor profile and patient profile
+        DoctorProfile doctorProfile = new DoctorProfile();
+        doctorProfile.setUser(doctorUser);
+
+        Patient patient = new Patient();
+        patient.setUser(patientUser);
+
+        // Setup appointment entity
         Appointment appointment = new Appointment();
         appointment.setId(1L);
-        // Use the exact same LocalDateTime as in the DTO
-        appointment.setAppointmentDate(LocalDateTime.of(2025, 12, 30, 14, 30));
-        appointment.setReason("Annual check-up");
-        appointment.setStatus("SCHEDULED");
-        appointment.setDoctor(createDoctor("Dr. Emily Johnson"));
-        appointment.setPatient(createPatient("Alex Smith"));
+        appointment.setDoctor(doctorProfile);
+        appointment.setPatient(patient);
+        appointment.setAppointmentDate(LocalDateTime.of(2025, 12, 30, 14, 0));
+        appointment.setStatus(Appointment.AppointmentStatus.BOOKED);
+        appointment.setDescription("Regular checkup");
 
-        return appointment;
-    }
-
-    @Test
-    @DisplayName("toResponseDTO should correctly map entity to response DTO including doctor and patient full names")
-    void toResponseDTO_mapsCorrectly() {
-        Appointment appointment = createFullAppointment();
-
-        AppointmentResponseDTO dto = mapper.toResponseDTO(appointment);
+        // Map to DTO
+        AppointmentResponseDTO dto = mapper.toDTO(appointment);
 
         assertNotNull(dto);
-        assertEquals(appointment.getId(), dto.getId());
-        assertEquals(appointment.getAppointmentDate(), dto.getAppointmentDate());
-        assertEquals(appointment.getReason(), dto.getReason());
-        assertEquals(appointment.getStatus(), dto.getStatus());
-        assertEquals("Dr. Emily Johnson", dto.getDoctorFullName());
-        assertEquals("Alex Smith", dto.getPatientFullName());
+        assertEquals("Sarah Connor", dto.getDoctorName());
+        assertEquals("John Doe", dto.getPatientName());
+        assertEquals("BOOKED", dto.getStatus());
+        assertEquals("Regular checkup", dto.getReason());
     }
 
     @Test
-    @DisplayName("toEntity should map request DTO to new entity with constant status and ignore specified fields")
-    void toEntity_createsEntityWithDefaults() {
-        AppointmentRequestDTO requestDTO = createRequestDTO();
-
-        Appointment appointment = mapper.toEntity(requestDTO);
-
-        assertNull(appointment.getId());
-        assertNull(appointment.getDoctor());
-        assertNull(appointment.getPatient());
-        assertEquals("SCHEDULED", appointment.getStatus());
-
-        assertEquals(requestDTO.getAppointmentDate(), appointment.getAppointmentDate());
-        assertEquals(requestDTO.getReason(), appointment.getReason());
-    }
-
-    @Test
-    @DisplayName("updateEntityFromDTO should update only allowed fields and ignore id, doctor, patient, status")
-    void updateEntityFromDTO_updatesSelectiveFields() {
-        Appointment existing = createFullAppointment();
-        // keep original values that should not change
-        existing.setReason("Old reason");
-        existing.setAppointmentDate(LocalDateTime.of(2025, 1, 1, 10, 0));
-
-        AppointmentRequestDTO updateDTO = AppointmentRequestDTO.builder()
-                .appointmentDate(LocalDateTime.of(2026, 1, 15, 15, 0))
-                .reason("Follow-up visit")
-                .doctorId(99L) // ignored
+    void testToEntity() {
+        AppointmentRequestDTO requestDTO = AppointmentRequestDTO.builder()
+                .doctorId(10L)
+                .appointmentDate(LocalDateTime.of(2025, 12, 30, 14, 0))
+                .reason("Regular checkup")
                 .build();
 
-        mapper.updateEntityFromDTO(updateDTO, existing);
+        Appointment entity = mapper.toEntity(requestDTO);
 
-        // unchanged fields
-        assertEquals(1L, existing.getId());
-        assertEquals("Dr. Emily Johnson", existing.getDoctor().getFullName());
-        assertEquals("Alex Smith", existing.getPatient().getFullName());
-        assertEquals("SCHEDULED", existing.getStatus());
-
-        // updated fields
-        assertEquals(updateDTO.getAppointmentDate(), existing.getAppointmentDate());
-        assertEquals(updateDTO.getReason(), existing.getReason());
+        assertNotNull(entity);
+        assertEquals(Appointment.AppointmentStatus.BOOKED, entity.getStatus());
+        assertNull(entity.getPatient());
+        assertNull(entity.getDoctor());
+        assertNull(entity.getDescription()); // because mapping ignores description
     }
 
     @Test
-    @DisplayName("toResponseDTO should return null when input is null")
-    void toResponseDTO_handlesNull() {
-        assertNull(mapper.toResponseDTO(null));
-    }
+    void testUpdateEntityFromDTO() {
+        AppointmentRequestDTO requestDTO = AppointmentRequestDTO.builder()
+                .doctorId(20L)
+                .appointmentDate(LocalDateTime.of(2025, 12, 31, 10, 0))
+                .reason("Updated reason")
+                .build();
 
-    @Test
-    @DisplayName("toEntity should return null when source DTO is null (default MapStruct behaviour)")
-    void toEntity_handlesNull() {
-        // MapStruct returns null for null source in object → object mappings
-        assertNull(mapper.toEntity(null));
+        Appointment entity = new Appointment();
+        entity.setStatus(Appointment.AppointmentStatus.BOOKED);
+
+        mapper.updateEntityFromDTO(requestDTO, entity);
+
+        assertNotNull(entity);
+        assertEquals(Appointment.AppointmentStatus.BOOKED, entity.getStatus()); // unchanged
+        assertNull(entity.getDoctor());
+        assertNull(entity.getPatient());
+        assertNull(entity.getDescription()); // ignored in update mapping
     }
 }

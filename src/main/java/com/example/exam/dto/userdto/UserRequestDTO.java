@@ -12,5 +12,5 @@ public class UserRequestDTO {
     private String username;
     private String password;
     private String fullName;
-    private Set<String> roles; // ["ADMIN", "DOCTOR"]
+    private Set<String> roles;
 }

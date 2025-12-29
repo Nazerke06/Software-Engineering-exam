@@ -7,109 +7,91 @@ import com.example.exam.entities.MedicalRecord;
 import com.example.exam.mappers.MedicalRecordMapper;
 import com.example.exam.repositories.AppointmentRepository;
 import com.example.exam.repositories.MedicalRecordRepository;
-import com.example.exam.services.impl.MedicalRecordServiceImpl; // adjust if your impl has different name
+import com.example.exam.services.impl.MedicalRecordServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class MedicalRecordServiceTest {
 
     @Mock
-    private MedicalRecordRepository medicalRecordRepository;
+    private MedicalRecordRepository repository;
 
     @Mock
     private AppointmentRepository appointmentRepository;
 
     @Mock
-    private MedicalRecordMapper medicalRecordMapper;
+    private MedicalRecordMapper mapper;
 
     @InjectMocks
-    private MedicalRecordServiceImpl medicalRecordService; // change to your actual implementation class name
+    private MedicalRecordServiceImpl service;
 
-    @Test
-    void createRecord_success_whenAppointmentExists() {
-        // Given
-        Long appointmentId = 10L;
-        MedicalRecordRequestDTO requestDTO = MedicalRecordRequestDTO.builder()
-                .appointmentId(appointmentId)
-                .diagnosis("Common cold")
-                .treatment("Rest, fluids, paracetamol")
+    private MedicalRecordRequestDTO requestDTO;
+    private Appointment appointment;
+    private MedicalRecord record;
+    private MedicalRecordResponseDTO responseDTO;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        requestDTO = MedicalRecordRequestDTO.builder()
+                .appointmentId(1L)
+                .diagnosis("Flu")
+                .treatment("Rest")
                 .build();
 
-        Appointment existingAppointment = new Appointment();
-        existingAppointment.setId(appointmentId);
+        appointment = new Appointment();
+        appointment.setId(1L);
 
-        MedicalRecord mappedEntity = new MedicalRecord(); // after mapper.toEntity() - id and appointment ignored
+        record = new MedicalRecord();
+        record.setMedicalRecordName("Flu Record");
 
-        MedicalRecord savedEntity = new MedicalRecord();
-        savedEntity.setId(50L);
-        savedEntity.setMedicalRecordName("Cold - Dec 2025");
-        savedEntity.setAppointment(existingAppointment);
-
-        MedicalRecordResponseDTO responseDTO = MedicalRecordResponseDTO.builder()
-                .id(50L)
-                .medicalRecordName("Cold - Dec 2025")
-                .appointmentId(appointmentId)
+        responseDTO = MedicalRecordResponseDTO.builder()
+                .id(1L)
+                .medicalRecordName("Flu Record")
+                .appointmentId(1L)
                 .build();
-
-        // Mock behavior
-        when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(existingAppointment));
-        when(medicalRecordMapper.toEntity(requestDTO)).thenReturn(mappedEntity);
-        when(medicalRecordRepository.save(any(MedicalRecord.class))).thenAnswer(invocation -> {
-            MedicalRecord entity = invocation.getArgument(0);
-            entity.setId(50L);                    // simulate generated ID
-            entity.setMedicalRecordName("Cold - Dec 2025"); // simulate name generation if done in service
-            entity.setAppointment(existingAppointment);
-            return entity;
-        });
-        when(medicalRecordMapper.toDTO(savedEntity)).thenReturn(responseDTO);
-
-        // When
-        MedicalRecordResponseDTO result = medicalRecordService.createRecord(requestDTO);
-
-        // Then
-        assertThat(result)
-                .isNotNull()
-                .isEqualTo(responseDTO);
-
-        // Verify interactions
-        verify(appointmentRepository).findById(appointmentId);
-        verify(medicalRecordMapper).toEntity(requestDTO);
-        verify(medicalRecordRepository).save(mappedEntity);
-        verify(medicalRecordMapper).toDTO(savedEntity);
-
-        // Verify that appointment was manually set before saving (common pattern)
-        assertThat(mappedEntity.getAppointment()).isEqualTo(existingAppointment);
     }
 
     @Test
-    void createRecord_throwsException_whenAppointmentNotFound() {
-        // Given
-        Long invalidAppointmentId = 999L;
-        MedicalRecordRequestDTO requestDTO = MedicalRecordRequestDTO.builder()
-                .appointmentId(invalidAppointmentId)
-                .diagnosis("Test")
-                .treatment("Test")
-                .build();
+    void createRecord_success() {
+        // Мокаем вызовы
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(appointment));
+        when(mapper.toEntity(requestDTO)).thenReturn(record);
+        when(repository.save(record)).thenReturn(record);
+        when(mapper.toDTO(record)).thenReturn(responseDTO);
 
-        when(appointmentRepository.findById(invalidAppointmentId)).thenReturn(Optional.empty());
+        MedicalRecordResponseDTO result = service.createRecord(requestDTO);
 
-        // When & Then
-        assertThatThrownBy(() -> medicalRecordService.createRecord(requestDTO))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Appointment not found"); // Match exact message from impl
+        // Проверка результата
+        assertNotNull(result);
+        assertEquals("Flu Record", result.getMedicalRecordName());
+        assertEquals(1L, result.getAppointmentId());
 
-        verify(appointmentRepository).findById(invalidAppointmentId);
-        verifyNoInteractions(medicalRecordMapper, medicalRecordRepository);
+        // Проверка, что appointment был установлен в entity
+        assertEquals(appointment, record.getAppointment());
+
+        verify(repository, times(1)).save(record);
+        verify(mapper, times(1)).toEntity(requestDTO);
+        verify(mapper, times(1)).toDTO(record);
     }
+
+    @Test
+    void createRecord_appointmentNotFound() {
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> service.createRecord(requestDTO));
+
+        assertEquals("Appointment not found", exception.getMessage());
     }
+}

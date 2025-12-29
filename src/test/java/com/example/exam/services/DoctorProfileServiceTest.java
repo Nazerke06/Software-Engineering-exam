@@ -3,139 +3,116 @@ package com.example.exam.services;
 import com.example.exam.dto.doctorprofiledto.DoctorProfileRequestDTO;
 import com.example.exam.dto.doctorprofiledto.DoctorProfileResponseDTO;
 import com.example.exam.entities.DoctorProfile;
-import com.example.exam.entities.Role;
 import com.example.exam.entities.User;
+import com.example.exam.mappers.DoctorProfileMapper;
 import com.example.exam.repositories.DoctorProfileRepository;
 import com.example.exam.repositories.UserRepository;
-import org.junit.jupiter.api.Assertions;
+import com.example.exam.services.impl.DoctorProfileServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
+import org.mockito.*;
 
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
-@SpringBootTest
-//@Transactional
-@ActiveProfiles("test")
-public class DoctorProfileServiceTest {
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-    @Autowired
-    private DoctorProfileService doctorProfileService;
+class DoctorProfileServiceTest {
 
-    @Autowired
-    private UserRepository userRepository;
+    @InjectMocks
+    private DoctorProfileServiceImpl service;
 
-    @Autowired
+    @Mock
     private DoctorProfileRepository doctorProfileRepository;
 
-    private User admin;
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private DoctorProfileMapper doctorProfileMapper;
+
+    private User user;
+    private DoctorProfileRequestDTO requestDTO;
+    private DoctorProfile doctorProfile;
+    private DoctorProfileResponseDTO responseDTO;
 
     @BeforeEach
-    void initData() {
-        if (userRepository.findAll().isEmpty()) {
-            admin = new User();
-            admin.setFullName("Admin");
-            admin.setRoles(Set.of(Role.ADMIN));
-            admin = userRepository.save(admin);
-        } else {
-            admin = userRepository.findAll().get(0);
-        }
-    }
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
 
-    @Test
-    void createProfileTest() {
-        User doctor = new User();
-        doctor.setFullName("Dr. John Doe");
-        doctor.setRoles(Set.of(Role.DOCTOR));
-        doctor = userRepository.save(doctor);
-
-        DoctorProfileRequestDTO requestDTO = DoctorProfileRequestDTO.builder()
-                .userId(doctor.getId())
-                .specialization("Cardiology")
+        user = User.builder().id(1L).firstName("John").lastName("Doe").build();
+        requestDTO = DoctorProfileRequestDTO.builder()
+                .userId(1L)
+                .specialization("Cardiologist")
                 .experience(10)
                 .build();
-
-        DoctorProfileResponseDTO response = doctorProfileService.createProfile(requestDTO, admin);
-
-        Assertions.assertNotNull(response);
-        Assertions.assertNotNull(response.getId());
-        Assertions.assertEquals("Dr. John Doe", response.getDoctorName());
-        Assertions.assertEquals("Cardiology", response.getSpecialization());
-        Assertions.assertEquals(10, response.getExperience());
-
-        DoctorProfile savedProfile = doctorProfileRepository.findById(response.getId()).orElse(null);
-        Assertions.assertNotNull(savedProfile);
-        Assertions.assertEquals("Cardiology", savedProfile.getSpecialization());
-        Assertions.assertEquals(10, savedProfile.getExperience());
-        Assertions.assertEquals(doctor.getId(), savedProfile.getUser().getId());
-    }
-
-    @Test
-    void createProfile_userNotFoundTest() {
-        DoctorProfileRequestDTO requestDTO = DoctorProfileRequestDTO.builder()
-                .userId(-1L)
-                .specialization("Neurology")
-                .experience(5)
+        doctorProfile = DoctorProfile.builder()
+                .id(1L)
+                .user(user)
+                .specialization("Cardiologist")
+                .experienceYears(10)
                 .build();
-
-        RuntimeException exception = Assertions.assertThrows(
-                RuntimeException.class,
-                () -> doctorProfileService.createProfile(requestDTO, admin)
-        );
-
-        Assertions.assertTrue(exception.getMessage().toLowerCase().contains("not found"));
+        responseDTO = DoctorProfileResponseDTO.builder()
+                .id(1L)
+                .doctorName("John Doe")
+                .specialization("Cardiologist")
+                .experience(10)
+                .build();
     }
 
     @Test
-    void deleteProfileTest() {
-        User doctor = new User();
-        doctor.setFullName("Dr. Delete");
-        doctor.setRoles(Set.of(Role.DOCTOR));
-        doctor = userRepository.save(doctor);
+    void createProfile_success() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(doctorProfileRepository.findByUser(user)).thenReturn(Optional.empty());
+        when(doctorProfileMapper.toEntity(requestDTO)).thenReturn(doctorProfile);
+        when(doctorProfileRepository.save(doctorProfile)).thenReturn(doctorProfile);
+        when(doctorProfileMapper.toDTO(doctorProfile)).thenReturn(responseDTO);
 
-        DoctorProfile profile = new DoctorProfile();
-        profile.setUser(doctor);
-        profile.setFullName("Dr. Delete");
-        profile.setSpecialization("Surgery");
-        profile.setExperience(7);
-        profile = doctorProfileRepository.save(profile);
+        DoctorProfileResponseDTO result = service.createProfile(requestDTO, user);
 
-        Long profileId = profile.getId();
-        doctorProfileService.deleteProfile(profileId, admin);
-
-        Assertions.assertFalse(doctorProfileRepository.findById(profileId).isPresent());
+        assertNotNull(result);
+        assertEquals("John Doe", result.getDoctorName());
+        verify(doctorProfileRepository).save(doctorProfile);
     }
 
     @Test
-    void getRandomProfileTest() {
-        List<DoctorProfile> profiles = doctorProfileRepository.findAll();
-        if (profiles.isEmpty()) {
-            User doctor = new User();
-            doctor.setFullName("Dr. Random");
-            doctor.setRoles(Set.of(Role.DOCTOR));
-            doctor = userRepository.save(doctor);
+    void createProfile_userNotFound() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-            DoctorProfile profile = new DoctorProfile();
-            profile.setUser(doctor);
-            profile.setFullName("Dr. Random");
-            profile.setSpecialization("Dermatology");
-            profile.setExperience(3);
-            doctorProfileRepository.save(profile);
+        NoSuchElementException exception = assertThrows(NoSuchElementException.class,
+                () -> service.createProfile(requestDTO, user));
 
-            profiles = doctorProfileRepository.findAll();
-        }
+        assertEquals("User not found with id: 1", exception.getMessage());
+    }
 
-        Random random = new Random();
-        DoctorProfile randomProfile = profiles.get(random.nextInt(profiles.size()));
+    @Test
+    void createProfile_alreadyExists() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(doctorProfileRepository.findByUser(user)).thenReturn(Optional.of(doctorProfile));
 
-        Assertions.assertNotNull(randomProfile);
-        Assertions.assertNotNull(randomProfile.getId());
-        Assertions.assertNotNull(randomProfile.getFullName());
-        Assertions.assertNotNull(randomProfile.getSpecialization());
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.createProfile(requestDTO, user));
+
+        assertEquals("Doctor profile already exists for this user", exception.getMessage());
+    }
+
+    @Test
+    void deleteProfile_success() {
+        when(doctorProfileRepository.findById(1L)).thenReturn(Optional.of(doctorProfile));
+
+        service.deleteProfile(1L, user);
+
+        verify(doctorProfileRepository).delete(doctorProfile);
+    }
+
+    @Test
+    void deleteProfile_notFound() {
+        when(doctorProfileRepository.findById(1L)).thenReturn(Optional.empty());
+
+        NoSuchElementException exception = assertThrows(NoSuchElementException.class,
+                () -> service.deleteProfile(1L, user));
+
+        assertEquals("Doctor profile not found with id: 1", exception.getMessage());
     }
 }

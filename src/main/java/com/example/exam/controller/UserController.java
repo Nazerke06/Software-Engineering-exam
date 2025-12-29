@@ -20,7 +20,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
+    @PostMapping("/api/users/post")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponseDTO> createUser(
             @Valid @RequestBody UserRequestDTO dto,
@@ -29,7 +29,7 @@ public class UserController {
         return ResponseEntity.status(201).body(response);
     }
 
-    @GetMapping
+    @GetMapping("/api/users/get")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());

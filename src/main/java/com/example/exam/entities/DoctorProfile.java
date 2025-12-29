@@ -4,25 +4,19 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-//@Table(name = "doctor_profiles")
-@Data
-//@Getter
-//@Setter
-//@NoArgsConstructor
-//@AllArgsConstructor
-//@Builder
+@Table(name = "doctors")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class DoctorProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String fullName;
-
-    private String specialization;
-    private Integer experience;
 
     @OneToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", unique = true)
     private User user;
 
+    private String specialization; // e.g., Cardiologist
+    private Integer experienceYears;
+    private String qualification;
 }

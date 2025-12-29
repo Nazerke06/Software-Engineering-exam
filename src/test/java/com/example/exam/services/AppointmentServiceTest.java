@@ -2,221 +2,131 @@ package com.example.exam.services;
 
 import com.example.exam.dto.appointmentdto.AppointmentRequestDTO;
 import com.example.exam.dto.appointmentdto.AppointmentResponseDTO;
-import com.example.exam.entities.Appointment;
-import com.example.exam.entities.Role;
-import com.example.exam.entities.User;
-import com.example.exam.mappers.AppointmentMapper;
-import com.example.exam.repositories.AppointmentRepository;
-import com.example.exam.repositories.UserRepository;
-import com.example.exam.services.impl.AppointmentServiceImpl;
-import org.junit.jupiter.api.DisplayName;
+import com.example.exam.entities.*;
+import com.example.exam.repositories.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+@SpringBootTest
+@ActiveProfiles("test")
+public class AppointmentServiceTest {
 
-@ExtendWith(MockitoExtension.class)
-class AppointmentServiceTest {
+    @Autowired
+    private AppointmentService appointmentService;
 
-    @Mock
-    private AppointmentRepository appointmentRepository;
-
-    @Mock
+    @Autowired
     private UserRepository userRepository;
 
-    @Mock
-    private AppointmentMapper appointmentMapper;
+    @Autowired
+    private PatientRepository patientRepository;
 
-    @InjectMocks
-    private AppointmentServiceImpl appointmentService;
+    @Autowired
+    private DoctorProfileRepository doctorProfileRepository;
 
-    private User createUser(Long id, String fullName, Role... roles) {
-        User user = new User();
-        user.setId(id);
-        user.setFullName(fullName);
-        user.setRoles(new HashSet<>(Arrays.asList(roles)));
-        return user;
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    private User doctorUser;
+    private User patientUser;
+    private DoctorProfile doctorProfile;
+    private Patient patientProfile;
+
+    @BeforeEach
+    void setup() {
+        // Clear all tables in proper order
+        appointmentRepository.deleteAll();
+        patientRepository.deleteAll();
+        doctorProfileRepository.deleteAll();
+        userRepository.deleteAll();
+
+        // 1. Save doctor user
+        doctorUser = new User();
+        doctorUser.setUsername("Dr. Sarah Connor");
+        doctorUser.setRole(Role.DOCTOR);
+        doctorUser = userRepository.saveAndFlush(doctorUser); // <--- flush to DB
+
+        // 2. Save doctor profile referencing persisted user
+        doctorProfile = new DoctorProfile();
+        doctorProfile.setUser(doctorUser);
+        doctorProfile.setSpecialization("Cardiology");
+        doctorProfile = doctorProfileRepository.saveAndFlush(doctorProfile); // <--- flush
+
+        // 3. Save patient user
+        patientUser = new User();
+        patientUser.setUsername("John Doe");
+        patientUser.setRole(Role.PATIENT);
+        patientUser = userRepository.saveAndFlush(patientUser); // <--- flush
+
+        // 4. Save patient profile referencing persisted user
+        patientProfile = new Patient();
+        patientProfile.setUser(patientUser);
+        patientProfile = patientRepository.saveAndFlush(patientProfile); // <--- flush
     }
 
-    private User createPatient() {
-        return createUser(1L, "John Doe", Role.PATIENT);
-    }
-
-    private User createDoctor() {
-        return createUser(10L, "Dr. Sarah Connor", Role.DOCTOR);
-    }
-
-    private User createAdmin() {
-        return createUser(99L, "Admin User", Role.ADMIN);
-    }
-
-    private AppointmentRequestDTO createRequestDTO() {
-        return AppointmentRequestDTO.builder()
+    @Test
+    void createAppointmentTest() {
+        AppointmentRequestDTO requestDTO = AppointmentRequestDTO.builder()
+                .doctorId(doctorUser.getId())
                 .appointmentDate(LocalDateTime.of(2025, 12, 30, 14, 30))
-                .doctorId(10L)
-                .reason("Regular check-up")
-                .build();
-    }
-
-    @Test
-    @DisplayName("createAppointment - should successfully create appointment for patient")
-    void createAppointment_success() {
-        AppointmentRequestDTO requestDTO = createRequestDTO();
-        User patient = createPatient();
-        User doctor = createDoctor();
-
-        Appointment mappedEntity = new Appointment();
-        mappedEntity.setAppointmentDate(requestDTO.getAppointmentDate());
-        mappedEntity.setReason(requestDTO.getReason());
-        mappedEntity.setStatus("SCHEDULED");
-
-        Appointment savedEntity = new Appointment();
-        savedEntity.setId(100L);
-        savedEntity.setAppointmentDate(requestDTO.getAppointmentDate());
-        savedEntity.setReason(requestDTO.getReason());
-        savedEntity.setStatus("SCHEDULED");
-        savedEntity.setDoctor(doctor);
-        savedEntity.setPatient(patient);
-
-        AppointmentResponseDTO responseDTO = AppointmentResponseDTO.builder()
-                .id(100L)
-                .appointmentDate(requestDTO.getAppointmentDate())
-                .doctorFullName("Dr. Sarah Connor")
-                .patientFullName("John Doe")
-                .status("SCHEDULED")
                 .reason("Regular check-up")
                 .build();
 
-        when(appointmentMapper.toEntity(requestDTO)).thenReturn(mappedEntity);
-        when(userRepository.findById(10L)).thenReturn(Optional.of(doctor));
-        when(appointmentRepository.save(any(Appointment.class))).thenReturn(savedEntity);
-        when(appointmentMapper.toResponseDTO(savedEntity)).thenReturn(responseDTO);
+        AppointmentResponseDTO response = appointmentService.createAppointment(requestDTO, patientUser);
 
-        AppointmentResponseDTO result = appointmentService.createAppointment(requestDTO, patient);
+        Assertions.assertNotNull(response);
+        Assertions.assertNotNull(response.getId());
+        Assertions.assertEquals("Dr. Sarah Connor", response.getDoctorName());
+        Assertions.assertEquals("John Doe", response.getPatientName());
+        Assertions.assertEquals(Appointment.AppointmentStatus.BOOKED.name(), response.getStatus());
+        Assertions.assertEquals("Regular check-up", response.getReason());
 
-        assertNotNull(result);
-        assertEquals(100L, result.getId());
-        assertEquals("Dr. Sarah Connor", result.getDoctorFullName());
-        assertEquals("John Doe", result.getPatientFullName());
-        assertEquals("SCHEDULED", result.getStatus());
-
-        verify(appointmentRepository).save(any());
+        Appointment saved = appointmentRepository.findById(response.getId()).orElse(null);
+        Assertions.assertNotNull(saved);
+        Assertions.assertEquals(patientProfile.getId(), saved.getPatient().getId());
+        Assertions.assertEquals(doctorProfile.getId(), saved.getDoctor().getId());
     }
 
     @Test
-    @DisplayName("createAppointment - should throw if doctor not found")
-    void createAppointment_doctorNotFound() {
-        AppointmentRequestDTO requestDTO = createRequestDTO();
-        User patient = createPatient();
-
-        // Only stub what's actually used before the exception
-        when(userRepository.findById(10L)).thenReturn(Optional.empty());
-
-        // No other stubbings here — mapper and save should NOT be called
-
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                appointmentService.createAppointment(requestDTO, patient));
-
-        String message = exception.getMessage().toLowerCase();
-        assertTrue(message.contains("not found") ||
-                message.contains("doctor") ||
-                message.contains("user"));
-
-        verify(appointmentRepository, never()).save(any());
-        verify(appointmentMapper, never()).toEntity(any());
-    }
-
-    @Test
-    @DisplayName("cancelAppointment - should cancel appointment if called by admin")
-    void cancelAppointment_success_byAdmin() {
-        Long appointmentId = 100L;
-        User admin = createAdmin();
-
-        Appointment existing = new Appointment();
-        existing.setId(appointmentId);
-        existing.setStatus("SCHEDULED");
-        existing.setDoctor(createDoctor());
-        existing.setPatient(createPatient());
-
-        Appointment cancelled = new Appointment();
-        cancelled.setId(appointmentId);
-        cancelled.setStatus("CANCELED");  // ← Your actual spelling: one L
-        cancelled.setDoctor(existing.getDoctor());
-        cancelled.setPatient(existing.getPatient());
-
-        AppointmentResponseDTO responseDTO = AppointmentResponseDTO.builder()
-                .id(appointmentId)
-                .status("CANCELED")
-                .doctorFullName("Dr. Sarah Connor")
-                .patientFullName("John Doe")
-                .build();
-
-        when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(existing));
-        when(appointmentRepository.save(existing)).thenReturn(cancelled);
-        when(appointmentMapper.toResponseDTO(cancelled)).thenReturn(responseDTO);
-
-        AppointmentResponseDTO result = appointmentService.cancelAppointment(appointmentId, admin);
-
-        assertEquals("CANCELED", result.getStatus());
-        assertEquals("CANCELED", existing.getStatus());  // mutated in place
-        verify(appointmentRepository).save(existing);
-    }
-
-    @Test
-    @DisplayName("cancelAppointment - should throw if appointment not found")
-    void cancelAppointment_notFound() {
-        Long id = 999L;
-        when(appointmentRepository.findById(id)).thenReturn(Optional.empty());
-
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                appointmentService.cancelAppointment(id, createAdmin()));
-
-        String message = exception.getMessage().toLowerCase();
-        assertTrue(message.contains("appointment") || message.contains("not found"));
-
-        verify(appointmentRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("getAllAppointments - should return list of all appointments")
-    void getAllAppointments_returnsList() {
+    void cancelAppointmentTest() {
+        // Create appointment
         Appointment appointment = new Appointment();
-        appointment.setId(1L);
-        appointment.setStatus("SCHEDULED");
-        appointment.setDoctor(createDoctor());
-        appointment.setPatient(createPatient());
+        appointment.setDoctor(doctorProfile);
+        appointment.setPatient(patientProfile);
+        appointment.setAppointmentDate(LocalDateTime.now().plusDays(1));
+        appointment.setDescription("Test cancel");
+        appointment.setStatus(Appointment.AppointmentStatus.BOOKED);
+        appointment = appointmentRepository.save(appointment);
 
-        AppointmentResponseDTO dto = AppointmentResponseDTO.builder()
-                .id(1L)
-                .status("SCHEDULED")
-                .doctorFullName("Dr. Sarah Connor")
-                .patientFullName("John Doe")
-                .build();
+        // Cancel appointment
+        AppointmentResponseDTO response = appointmentService.cancelAppointment(appointment.getId(), patientUser);
 
-        when(appointmentRepository.findAll()).thenReturn(List.of(appointment));
-        when(appointmentMapper.toResponseDTO(appointment)).thenReturn(dto);
+        Assertions.assertEquals(Appointment.AppointmentStatus.CANCELLED.name(), response.getStatus());
 
-        List<AppointmentResponseDTO> result = appointmentService.getAllAppointments();
-
-        assertEquals(1, result.size());
-        assertEquals("Dr. Sarah Connor", result.get(0).getDoctorFullName());
+        Appointment canceled = appointmentRepository.findById(appointment.getId()).orElseThrow();
+        Assertions.assertEquals(Appointment.AppointmentStatus.CANCELLED, canceled.getStatus());
     }
 
     @Test
-    @DisplayName("getAllAppointments - should return empty list when none exist")
-    void getAllAppointments_empty() {
-        when(appointmentRepository.findAll()).thenReturn(Collections.emptyList());
+    void getAllAppointmentsTest() {
+        // Create appointment
+        Appointment appointment = new Appointment();
+        appointment.setDoctor(doctorProfile);
+        appointment.setPatient(patientProfile);
+        appointment.setAppointmentDate(LocalDateTime.now().plusDays(2));
+        appointment.setDescription("Checkup");
+        appointment.setStatus(Appointment.AppointmentStatus.BOOKED);
+        appointmentRepository.save(appointment);
 
-        List<AppointmentResponseDTO> result = appointmentService.getAllAppointments();
+        List<AppointmentResponseDTO> appointments = appointmentService.getAllAppointments();
 
-        assertTrue(result.isEmpty());
+        Assertions.assertFalse(appointments.isEmpty());
+        Assertions.assertTrue(appointments.stream().anyMatch(a -> a.getPatientName().equals("John Doe")));
     }
 }

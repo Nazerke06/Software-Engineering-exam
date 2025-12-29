@@ -4,34 +4,37 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.Date;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "appointments")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@Getter
-@Setter
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Appointment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private LocalDateTime appointmentDate;
-    private String time;
-    private String description;
-    private String location;
-    private String status;
-    private String reason;
-
     @ManyToOne
     @JoinColumn(name = "patient_id")
-    private User patient;
+    private Patient patient;
 
     @ManyToOne
     @JoinColumn(name = "doctor_id")
-    private User doctor;
+    private DoctorProfile doctor;
+//    private LocalDateTime appointmentTime;
+
+    private LocalDateTime appointmentDate;
+
+    @Enumerated(EnumType.STRING)
+    private AppointmentStatus status = AppointmentStatus.BOOKED;
+
+    private String description;
+
+    public enum AppointmentStatus {
+        BOOKED, COMPLETED, CANCELLED
+    }
 }
