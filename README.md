@@ -1,122 +1,124 @@
 🏥 Clinic Management System
 
-Финальный проект по дисциплине Software Engineering
-👩‍💻 Команда: 2 человека
+Final project for the Software Engineering course 👩‍💻 Team: 2 members
+
 
 ----------------------------------------------------------------------
 
 
-📌 Описание проекта
 
-Онлайн-система управления медицинской клиникой:
+📌 Project Description
 
-🩺 Запись пациентов на приём к врачам
+An online system for managing a medical clinic:
 
-👨‍⚕️ Профили пациентов и врачей
+🩺 Patient appointment scheduling
 
-💊 Выписка рецептов
+👨‍⚕️ Patient and doctor profiles
 
-📝 Ведение медицинских записей
+💊 Prescription issuance
 
-🏥 Управление справочником лекарств
+📝 Maintaining medical records
 
-💰 Выставление счетов за услуги
+🏥 Medicine directory management
 
-⭐ Отзывы пациентов
+💰 Billing for services
+
+⭐ Patient reviews
+
 
 ----------------------------------------------------------------------
 
-🛠 Технологии
+
+
+🛠 Technologies
 
 Spring Boot 3
 
 Spring Data JPA
 
-Spring Security (роли: ADMIN, DOCTOR, PATIENT)
+Spring Security (roles: ADMIN, DOCTOR, PATIENT)
 
-MapStruct для маппинга Entity ↔ DTO
+MapStruct for Entity ↔ DTO mapping
 
-Liquibase для миграций базы данных
+Liquibase for database migrations
 
 Lombok
 
-PostgreSQL (или H2 для тестов)
+PostgreSQL (or H2 for tests)
 
-JUnit 5 + Mockito для unit-тестов
+JUnit 5 + Mockito for unit tests
 
-REST API с DTO (запрещено возвращать Entity)
+REST API with DTO (returning Entity is not allowed)
+
 
 ----------------------------------------------------------------------
 
 
 
-📂 Бизнес-сущности
+📂 Business Entities
 
 👤 User
-
 👨‍⚕️ DoctorProfile
-
 📅 Appointment
-
 📝 MedicalRecord
-
 🧑‍🤝‍🧑 Patient
-
 💊 Prescription
-
 🏷 Medicine
-
 💵 Invoice
-
 ⭐ Review
+🔑 Role (enum, actively used in security)
 
-🔑 Role (enum, активно используется в security)
 
 ----------------------------------------------------------------------
 
 
 
-🔑 Роли и права доступа
+🔑 Roles and Permissions
 
-ADMIN — полный доступ:
+ADMIN — full access:
 
-создание/удаление пользователей, врачей, пациентов
+Create/delete users, doctors, patients
 
-управление всеми данными
+Manage all data
 
-DOCTOR — работа с медицинскими данными:
+DOCTOR — work with medical data:
 
-создание медицинских записей
+Create medical records
 
-выписка рецептов
+Issue prescriptions
 
-управление справочником лекарств
+Manage medicine directory
 
-PATIENT — работа со своим профилем:
+PATIENT — work with their own profile:
 
-создание/редактирование профиля
+Create/edit profile
 
-запись на приём
+Book appointments
 
-оставление отзывов после приёма
+Leave reviews after appointments
 
 ----------------------------------------------------------------------
 
 
 
-🚀 Запуск проекта
 
-Склонируйте репозиторий:
+🚀 Project Setup
+
+Clone the repository:
+
+git clone https://github.com/your-username/clinic-management-system.git
 
 
-git clone https://github.com/your-username/clinic-management-system.git](https://github.com/Nazerke06/Software-Engineering-exam.git)
+----------------------------------------------------------------------
 
 
-Настройте базу данных (MySQL или H2)
+Set up the database (MySQL or H2)
 
-Запустите приложение через IDE или командой:
+Run the application via IDE or command line:
 
 mvn spring-boot:run
 
 
-Откройте в браузере: http://localhost:8000
+----------------------------------------------------------------------
+
+Open in browser: http://localhost:8000
