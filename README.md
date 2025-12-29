@@ -112,7 +112,7 @@ PATIENT — работа со своим профилем:
 git clone https://github.com/your-username/clinic-management-system.git](https://github.com/Nazerke06/Software-Engineering-exam.git)
 
 
-Настройте базу данных (PostgreSQL или H2)
+Настройте базу данных (MySQL или H2)
 
 Запустите приложение через IDE или командой:
 
