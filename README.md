@@ -58,14 +58,23 @@ REST API with DTO (returning Entity is not allowed)
 📂 Business Entities
 
 👤 User
+
 👨‍⚕️ DoctorProfile
+
 📅 Appointment
+
 📝 MedicalRecord
+
 🧑‍🤝‍🧑 Patient
+
 💊 Prescription
+
 🏷 Medicine
+
 💵 Invoice
+
 ⭐ Review
+
 🔑 Role (enum, actively used in security)
 
 
